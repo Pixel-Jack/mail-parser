@@ -18,19 +18,20 @@ limitations under the License.
 """
 
 from __future__ import unicode_literals
+
 import email
+import ipaddress
 import logging
 import os
 
-import ipaddress
-import six
 import simplejson as json
+import six
 
 from .const import (
     ADDRESSES_HEADERS,
     EPILOGUE_DEFECTS,
     REGXIP)
-
+from .exceptions import MailParserEnvironmentError
 from .utils import (
     convert_mail_date,
     decode_header_part,
@@ -43,9 +44,6 @@ from .utils import (
     ported_string,
     receiveds_parsing,
 )
-
-from .exceptions import MailParserEnvironmentError
-
 
 log = logging.getLogger(__name__)
 
@@ -372,7 +370,7 @@ class MailParser(object):
                         content_disposition, i))
 
                     if transfer_encoding == "base64" or (
-                       transfer_encoding == "quoted-\
+                        transfer_encoding == "quoted-\
                        printable" and "application" in mail_content_type):
 
                         payload = p.get_payload(decode=False)
@@ -402,8 +400,10 @@ class MailParser(object):
                     if payload:
                         if p.get_content_subtype() == 'html':
                             self._text_html.append(payload)
-                        else:
+                        elif p.get_content_subtype() == 'plain':
                             self._text_plain.append(payload)
+                        else:
+                            log.warning(f'Email content {p.get_content_subtype()} not handled')
         else:
             # Parsed object mail with all parts
             self._mail = self._make_mail()
